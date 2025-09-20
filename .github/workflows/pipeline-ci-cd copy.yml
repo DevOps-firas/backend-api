@@ -24,3 +24,8 @@ jobs:
     steps:
       - name: Clone Source Code
         uses: actions/checkout@v4
+
+      - name: build docker image
+        run: docker build -t firasaydi/api-session13 .
+
+      - run: docker images
