@@ -1,0 +1,14 @@
+name: Basic workflow develop
+
+# trigger
+on:
+  push: 
+    branches:
+      - main
+
+jobs:
+  run-unit-test-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Source Code
+        uses: actions/checkout@v4
