@@ -16,11 +16,11 @@ jobs:
       - name: Clone Source Code
         uses: actions/checkout@v4
 
-      # - name: install dependencies
-      #   run: npm install
+      - name: install dependencies
+        run: npm install
 
-      # - name: run unit test
-      #   run: npm run test
+      - name: run unit test
+        run: npm run test
   build-docker-image-and-push:
     runs-on: ubuntu-latest
     needs: run-unit-test-job
@@ -28,25 +28,25 @@ jobs:
       - name: Clone Source Code
         uses: actions/checkout@v4
 
-      # - name: build docker image
-      #   run: docker build -t ${{ env.DDOCKER_IMAGE }} .
+      - name: build docker image
+        run: docker build -t ${{ env.DDOCKER_IMAGE }} .
 
-      # - name: tag docker image with github run number
-      #   run: docker tag ${{ env.DDOCKER_IMAGE }} ${{ env.DDOCKER_IMAGE }}:${{github.run_number}}
+      - name: tag docker image with github run number
+        run: docker tag ${{ env.DDOCKER_IMAGE }} ${{ env.DDOCKER_IMAGE }}:${{github.run_number}}
 
-      # - run: docker images
+      - run: docker images
 
-      # - name: login to docker hub
-      #   uses: docker/login-action@v2
-      #   with:
-      #     username: ${{ vars.DOCKER_HUB_USERNAME }}
-      #     password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: login to docker hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ vars.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      # - name: push Docker image
-      #   run: docker push ${{ env.DDOCKER_IMAGE }}:${{github.run_number}}
+      - name: push Docker image
+        run: docker push ${{ env.DDOCKER_IMAGE }}:${{github.run_number}}
 
-      # - name: push docker image latest
-      #   run: docker push ${{ env.DDOCKER_IMAGE }}:latest
+      - name: push docker image latest
+        run: docker push ${{ env.DDOCKER_IMAGE }}:latest
 
   deplpy-to-vps:
     runs-on: ubuntu-latest
