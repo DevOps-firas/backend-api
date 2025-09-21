@@ -59,6 +59,6 @@ jobs:
           username: user
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            cd /home/user/app-backend-api/dev
+            cd /home/user/devops-script/backend-api/dev
             sudo docker compose pull ${{ env.DDOCKER_IMAGE }}
             sudo docker compose up -d --force-recreate --remove-orphans api
