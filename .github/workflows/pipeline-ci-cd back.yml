@@ -38,7 +38,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           # SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  snyk-code-security-scan-job:
+  snyk-code-security-scan-job: 
     runs-on: ubuntu-latest
     needs: run-unit-test-job
     steps:
@@ -56,13 +56,29 @@ jobs:
       - name: Snyk Authentication
         run: snyk auth ${{ secrets.SNYK_TOKEN }}
 
-      - name: Run Snyk Vulnerability Scan
-        run: snyk test --all-projects
+      # Run test but allow pipeline to continue (we’ll capture the result)
+      - name: Run Snyk Vulnerability Scan (test)
+        id: snyk_test
+        run: |
+          set -o pipefail
+          snyk test --all-projects --json | tee snyk-result.json
         continue-on-error: true
 
-      - name: Run Snyk Vulnerability Scan
-        run: snyk monitor --all-projects --org=firasaydi
-        # continue-on-error: false
+      # Monitor and capture the project URL
+      - name: Run Snyk Monitor
+        id: snyk_monitor
+        run: |
+          url=$(snyk monitor --all-projects --org=firasaydi | grep -Eo 'https://app.snyk.io/org[^ ]+')
+          echo "SNYK_URL=$url" >> $GITHUB_ENV
+
+      # Fail if vulnerabilities were found
+      - name: Check Snyk Test Result
+        run: |
+          if grep -q '"vulnerabilities":\s*\[' snyk-result.json; then
+            echo "❌ Vulnerabilities detected"
+            exit 1
+          fi
+          echo "✅ No vulnerabilities found"
 
       - name: Notify Slack on Success
         if: success()
@@ -70,7 +86,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ *Pipeline CI/CD Backend-api terminé avec succès !*\n🔁 Branche: `${{ github.ref_name }}`\n🏗 Build: `${{ env.BUILD_NUMBER }}`\n🔗 [Voir le workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              "text": "✅ *Snyk scan passed!* 🎉\n🔁 Branch: `${{ github.ref_name }}`\n🔗 [Monitor Report](${{ env.SNYK_URL }})\n🔗 [Workflow Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
@@ -81,7 +97,7 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ *Échec du pipeline CI/CD Backend-api* ❗️\n🔁 Branche: `${{ github.ref_name }}`\n🔗 [Voir les logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              "text": "❌ *Snyk scan failed* ❗️\n🔁 Branch: `${{ github.ref_name }}`\n🔗 [Monitor Report](${{ env.SNYK_URL }})\n🔗 [Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
