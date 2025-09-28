@@ -60,21 +60,32 @@ jobs:
       - name: Run Snyk Vulnerability Scan (test)
         id: snyk_test
         run: |
-          set -o pipefail
-          snyk test --all-projects --json | tee snyk-result.json
+          snyk test --all-projects | echo "exit_code=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       # Monitor and capture the project URL
       - name: Run Snyk Monitor
         id: snyk_monitor
         run: |
-          url=$(snyk monitor --all-projects --org=firasaydi | grep -Eo 'https://app.snyk.io/org[^ ]+')
-          echo "SNYK_URL=$url" >> $GITHUB_ENV
+          MONITOR_OUTPUT=$(snyk monitor --all-projects --org=firasaydi)
+          echo "Monitor output: $MONITOR_OUTPUT"
 
+          MONITOR_URL=$(echo "$MONITOR_OUTPUT" | grep -o 'https://app.snyk.io/org/[^ ]*' | head -1 || echo "")
+
+          if [ -z "$MONITOR_URL" ]; then
+            MONITOR_URL=$(echo "$MONITOR_OUTPUT" | grep -o 'https://app.snyk.io/[^ ]*' | head -1 || echo "")
+          fi
+
+          if [ -z "$MONITOR_URL" ]; then
+            MONITOR_URL="https://app.snyk.io/org/firasaydi/projects"
+          fi
+
+          echo "monitor_url=$MONITOR_URL >> $GITHUB_OUTPUT"
+          echo "Captured Snyk Monitor URL: $MONITOR_URL"
       # Fail if vulnerabilities were found
       - name: Check Snyk Test Result
         run: |
-          if grep -q '"vulnerabilities":\s*\[' snyk-result.json; then
+          if [ "${{ steps.snyk_test.outcome }}" == "failure" ]; then
             echo "❌ Vulnerabilities detected"
             exit 1
           fi
@@ -86,7 +97,9 @@ jobs:
         with:
           payload: |
             {
-              "text": "✅ *Snyk scan passed!* 🎉\n🔁 Branch: `${{ github.ref_name }}`\n🔗 [Monitor Report](${{ env.SNYK_URL }})\n🔗 [Workflow Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              "text": "✅ *Snyk scan passed!* 🎉\n🔁 Branch: `${{ github.ref_name }}`\n
+              🔗 [Monitor Report](${{ env.SNYK_URL }})\n🔗 [Workflow Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              [View Snyk Dashboard](${{ steps.snyk_monitor.outputs.monitor_url }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
@@ -97,7 +110,9 @@ jobs:
         with:
           payload: |
             {
-              "text": "❌ *Snyk scan failed* ❗️\n🔁 Branch: `${{ github.ref_name }}`\n🔗 [Monitor Report](${{ env.SNYK_URL }})\n🔗 [Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+              "text": "❌ *Snyk scan failed* ❗️\n🔁 Branch: `${{ github.ref_name }}`\n
+              🔗 [Monitor Report](${{ env.SNYK_URL }})\n
+              🔗 [Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
@@ -119,16 +134,20 @@ jobs:
 
       - name: Run Trivy filesystem vulnerability scan
         run: trivy fs .
-        
+
       - name: Run Trivy Docker image vulnerability scan
         run: |
           docker build -t ${{ env.IMAGE_NAME }} .
           trivy image ${{ env.IMAGE_NAME }}
 
-
   build-docker-image-and-push:
     runs-on: ubuntu-latest
-    needs: [sonarqube-code-quality-scan-job, snyk-code-security-scan-job, trivy-image-security-scan-job]
+    needs:
+      [
+        sonarqube-code-quality-scan-job,
+        snyk-code-security-scan-job,
+        trivy-image-security-scan-job,
+      ]
     if: success()
     steps:
       - name: Clone Source Code
