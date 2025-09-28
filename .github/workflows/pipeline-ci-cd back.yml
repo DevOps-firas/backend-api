@@ -116,11 +116,15 @@ jobs:
   trivy-image-security-scan-job:
     runs-on: ubuntu-latest
     needs: run-unit-test-job
+    env:
+      IMAGE_NAME: firasaydi/api-session13:latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y curl
+
       - name: Download and install Trivy
         run: |
           curl -sSL https://github.com/aquasecurity/trivy/releases/download/v0.29.0/trivy_0.29.0_Linux-64bit.tar.gz -o trivy.tar.gz
@@ -131,10 +135,11 @@ jobs:
       - name: Run Trivy filesystem vulnerability scan
         run: trivy fs .
 
+      - name: Build Docker image
+        run: docker build -t ${{ env.IMAGE_NAME }} .
+
       - name: Run Trivy Docker image vulnerability scan
-        run: |
-          docker build -t ${{ env.IMAGE_NAME }} .
-          trivy image ${{ env.IMAGE_NAME }}
+        run: trivy image ${{ env.IMAGE_NAME }}
 
   build-docker-image-and-push:
     runs-on: ubuntu-latest
