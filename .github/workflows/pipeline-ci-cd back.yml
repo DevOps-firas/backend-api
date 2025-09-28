@@ -132,14 +132,14 @@ jobs:
           sudo mv trivy /usr/local/bin/
           trivy --version
 
-      # - name: Run Trivy filesystem vulnerability scan
-      #   run: trivy fs .
+      - name: Run Trivy filesystem vulnerability scan
+        run: trivy fs .
 
       - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE_NAME }} .
+        run: docker build -t ${{ env.DDOCKER_IMAGE }} .
 
       - name: Run Trivy Docker image vulnerability scan
-        run: trivy image ${{ env.IMAGE_NAME }}
+        run: trivy image ${{ env.DDOCKER_IMAGE }}
 
   build-docker-image-and-push:
     runs-on: ubuntu-latest
